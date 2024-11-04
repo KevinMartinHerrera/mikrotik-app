@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('router_os', function (Blueprint $table) {
             $table->id();
+            $table->string('identity');
+            $table->string('ip_address');
+            $table->string('login');
+            $table->string('password')->nullable();
+            $table->boolean('connect');
             $table->timestamps();
         });
     }
