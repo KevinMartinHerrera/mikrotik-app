@@ -49,7 +49,6 @@ class RouterosController extends Controller
         return redirect('/')->with('success', 'Datos de RouterOS guardados correctamente');
     }
     
-
     public function routeros_connection(Request $request)
     {
         try {
@@ -63,12 +62,7 @@ class RouterosController extends Controller
                 return back()->withErrors($validator)->withInput();
             }
     
-            $req_data = [
-                'ip_address' => $request->ip_address,
-                'login' => $request->login,
-                'password' => $request->password
-            ];
-    
+            $req_data = $request->only(['ip_address', 'login', 'password']);
             $routeros_db = RouterOs::where('ip_address', $req_data['ip_address'])->first();
     
             if ($routeros_db) {
@@ -81,26 +75,38 @@ class RouterosController extends Controller
                     $routeros_db->connect = $connection;
                     $routeros_db->save();
     
-                    // Redirige a la vista dashboard con los datos de RouterOS
-                    return redirect()->route('dashboard')->with('routeros_data', $routeros_db);
+                    // Guardar autenticación y datos en la sesión
+                    session(['authenticated' => true]);
+                    session(['ip_address' => $req_data['ip_address']]);
+    
+            
+                    $groups = $API->comm('/user/group/print');
+                    session(['groups' => $groups]);
+    
+                    // Obtener y almacenar las interfaces de red
+                    $interfaces = $API->comm('/interface/print');
+                    session(['interfaces' => $interfaces]);
+
+                    $users = $API->comm('/ip/hotspot/user/print');
+                    session(['users' => $users]);
+    
+                    // Obtener y almacenar las direcciones IP
+                    $ips = $API->comm('/ip/address/print');
+                    session(['ips' => $ips]);
+    
+                    return redirect()->route('show.Dashboard');
                 } else {
-                    return back()->withErrors(['message' => 'RouterOS no conectado, login o contraseña incorrectos'])->withInput();
+                    return back()->with('error', 'Login o contraseña incorrectos');
                 }
-    
             } else {
-                // Si no existe en la base de datos, creamos una nueva entrada y redirigimos al dashboard
-                $new_data = $this->store_routeros($req_data);
-                return redirect()->route('dashboard')->with('routeros_data', $new_data->original['routeros_data']);
+                return $this->store_routeros($req_data);
             }
-    
         } catch (Exception $e) {
-            return back()->withErrors(['message' => 'Error en la conexión: ' . $e->getMessage()])->withInput();
+            return back()->with('error', 'Error: ' . $e->getMessage());
         }
     }
     
     
-    
-
     public function check_routeros_connection($data)
     {
         $routeros_db = RouterOs::where('ip_address', $data['ip_address'])->get();
@@ -215,121 +221,88 @@ class RouterosController extends Controller
     public function add_new_address(Request $request)
     {
         try {
-            // Validar la solicitud
             $validator = Validator::make($request->all(), [
                 'ip_address' => 'required',
                 'address' => 'required',
                 'interface' => 'required'
             ]);
     
-            if ($validator->fails()) return response()->json($validator->errors(), 404);
+            if ($validator->fails()) {
+                return redirect()->back()->with('error', 'Error en la validación de datos.');
+            }
     
-            // Verificar la conexión a RouterOS
             if ($this->check_routeros_connection($request->all())) {
-                // Verificar que $this->API sea un objeto
                 if (is_object($this->API)) {
-                    // Obtener la lista de direcciones IP
                     $address_lists = $this->API->comm('/ip/address/print');
-    
-                    // Buscar si la interfaz ya tiene la dirección IP
                     $find_interface = array_search($request->interface, array_column($address_lists, 'interface'));
     
                     if ($find_interface !== false) {
-                        return response()->json([
-                            'error' => true,
-                            'message' => "Interface $request->interface already has an IP address on RouterOS.",
-                            'suggestion' => "Did you want to edit the IP address from interface: $request->interface",
-                            'address_lists' => $address_lists
-                        ]);
+                        return redirect()->back()->with('error', "La interfaz {$request->interface} ya tiene una dirección IP.");
                     }
     
-                    // Agregar la nueva dirección IP
-                    $add_address = $this->API->comm('/ip/address/add', [
+                    $this->API->comm('/ip/address/add', [
                         'address' => $request->address,
                         'interface' => $request->interface
                     ]);
     
-                    // Obtener la lista actualizada de direcciones IP
-                    $list_address = $this->API->comm('/ip/address/print');
-    
-                    // Verificar si se agregó correctamente
-                    $find_address_id = array_search($add_address, array_column($list_address, '.id'));
-    
-                    if ($find_address_id !== false) {
-                        return response()->json([
-                            'success' => true,
-                            'message' => "Successfully added new address to interface: $request->interface",
-                            'address_lists' => $list_address
-                        ]);
-                    } else {
-                        return response()->json([
-                            'success' => false,
-                            'message' => isset($add_address['!trap']) ? $add_address['!trap'][0]['message'] : 'Failed to add address.',
-                            'address_lists' => $list_address,
-                            'routeros_data' => $this->routeros_data
-                        ]);
-                    }
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'API client is not initialized properly.'
-                    ]);
+                    return redirect()->back()->with('success', 'Dirección IP añadida correctamente.');
                 }
             }
         } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching data from RouterOS API: ' . $e->getMessage()
-            ]);
+            return redirect()->back()->with('error', 'Error en la conexión: ' . $e->getMessage());
         }
     }
+    
+
 
     public function add_ip_route(Request $request)
     {
         try {
+            // Validar la solicitud
             $validator = Validator::make($request->all(), [
-                'ip_address' => 'required',
-                'gateway' => 'required'
+                'ip_address' => 'required|ip',  // Asegúrate de que la IP sea válida
+                'gateway' => 'required|ip'  // Validar que el gateway sea una dirección IP
             ]);
+    
+            if ($validator->fails()) {
+                dd($validator->errors()->all());  // Muestra los errores de validación
 
-            if ($validator->fails()) return response()->json($validator->errors(), 404);
-
+                return redirect()->back()->with('error', 'Error en la validación de datos.');
+            }
+    
+            // Verificar la conexión a RouterOS
             if ($this->check_routeros_connection($request->all())) {
-                if (is_object($this->API)) { // Verificar si $this->API es un objeto
+                if (is_object($this->API)) {  // Verificar si $this->API es un objeto
+                    // Obtener las rutas existentes
                     $route_lists = $this->API->comm('/ip/route/print');
+                    
+                    // Buscar si el gateway ya está presente en las rutas
                     $find_route_lists = array_search($request->gateway, array_column($route_lists, 'gateway'));
-
-                    if ($find_route_lists === 0) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Gateway address : $request->gateway has already been taken",
-                            'route_lists' => $this->API->comm('/ip/route/print')
-                        ]);
+    
+                    if ($find_route_lists !== false) {
+                        // Si la ruta ya existe, mostrar error
+                        return redirect()->back()->with('error', "La dirección de gateway {$request->gateway} ya está en uso.");
                     } else {
-                        $add_route_lists = $this->API->comm('/ip/route/add', [
-                            'gateway' => $request->gateway
+                        // Si la ruta no existe, agregarla
+                        $this->API->comm('/ip/route/add', [
+                            'gateway' => $request->gateway,
+                            'dst-address' => $request->ip_address  // Puedes agregar la IP de destino si es necesario
                         ]);
-                        return response()->json([
-                            'success' => true,
-                            'message' => "Successfully added new routes with gateway : $request->gateway",
-                            'route_lists' => $this->API->comm('/ip/route/print'),
-                            'routeros_data' => $this->routeros_data
-                        ]);
+    
+                        return redirect()->back()->with('success', "Ruta añadida con éxito con el gateway: {$request->gateway}.");
                     }
                 } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'API is not initialized correctly.'
-                    ]);
+                    return redirect()->back()->with('error', 'La API no está inicializada correctamente.');
                 }
+            } else {
+                return redirect()->back()->with('error', 'No se pudo conectar a RouterOS.');
             }
         } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching data from RouterOS API: ' . $e->getMessage()
-            ]);
+            return redirect()->back()->with('error', 'Error al obtener datos de la API de RouterOS: ' . $e->getMessage());
         }
     }
+    
+    
 
     public function add_dns_servers(Request $request)
     {
@@ -425,67 +398,65 @@ class RouterosController extends Controller
 
     public function routeros_reboot(Request $request)
     {
-        try{
-            $schema = [
+        try {
+            $validator = Validator::make($request->all(), [
                 'ip_address' => 'required'
-            ];
-
-            $validator = Validator::make($request->all(), $schema);
-
-            if($validator->fails()) return response()->json($validator->errors(), 404);
-
-            if($this->check_routeros_connection($request->all())):
-                if (is_object($this->API)) {
-                    $reboot = $this->API->comm('/system/reboot');
-
-                    return response()->json([
-                        'reboot' => true,
-                        'message' => 'RouterOS has rebooted the system',
-                        'connection' => $this->connection
-                    ]);
-                }
-            endif;
-        }catch(Exception $e){
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching data from RouterOS API, '.$e->getMessage()
             ]);
+    
+            if ($validator->fails()) {
+                return redirect()->back()->with('error', 'Error en la validación de datos.');
+            }
+    
+            if ($this->check_routeros_connection($request->all())) {
+                if (is_object($this->API)) {
+                    $this->API->comm('/system/reboot');
+    
+                    return redirect()->route('show.login')->with('success', 'El sistema de RouterOS se ha reiniciado.');
+                }
+            }
+    
+            return redirect()->back()->with('error', 'No se pudo establecer la conexión con RouterOS.');
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error al intentar reiniciar RouterOS: ' . $e->getMessage());
         }
     }
-
+    
     public function routeros_shutdown(Request $request)
     {
-        try{
-            $schema = [
+        try {
+            $validator = Validator::make($request->all(), [
                 'ip_address' => 'required'
-            ];
-
-            $validator = Validator::make($request->all(), $schema);
-
-            if($validator->fails()) return response()->json($validator->errors(), 404);
-
-            if($this->check_routeros_connection($request->all())):
+            ]);
+    
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 404);
+            }
+    
+            if ($this->check_routeros_connection($request->all())) {
                 if (is_object($this->API)) {
-                    $update_connection = RouterOs::where('ip_address', $request->ip_address)->update(['connect' => 0]);
-
-                    $new_routeros_data = RouterOs::where('ip_address', $request->ip_address)->get();
-
+                    // Actualizar el estado de la conexión en la base de datos
+                    RouterOs::where('ip_address', $request->ip_address)->update(['connect' => 0]);
+    
+                    // Apagar el sistema RouterOS
                     $shutdown = $this->API->comm('/system/shutdown');
-
-                    return response()->json([
-                        'shutdown' => true,
-                        'message' => 'RouterOS has shut down the system',
-                        'connection' => $new_routeros_data[0]['connect']
-                    ]);
+    
+                    return redirect()->route('show.login')->with('success', 'El sistema de RouterOS se ha Apagado Correctamente');
                 }
-            endif;
-        }catch(Exception $e){
+            }
+    
             return response()->json([
                 'success' => false,
-                'message' => 'Error fetching data from RouterOS API, '.$e->getMessage()
+                'message' => 'No se pudo establecer la conexión con RouterOS.'
+            ]);
+    
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al intentar apagar RouterOS: ' . $e->getMessage()
             ]);
         }
     }
+    
 
 
 
@@ -504,28 +475,30 @@ class RouterosController extends Controller
     public function add_user(Request $request)
     {
         try {
+            // Validación de los campos
             $validator = Validator::make($request->all(), [
                 'ip_address' => 'required',
                 'username' => 'required',
                 'password' => 'required',
             ]);
-
+    
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 404);
             }
-
+    
+            // Agregar el usuario en RouterOS
             if ($this->check_routeros_connection($request->all())) {
                 if (is_object($this->API)) {
-                    // Agregar usuario en Mikrotik
                     $add_user = $this->API->comm('/ip/hotspot/user/add', [
                         'name' => $request->username,
                         'password' => $request->password,
+                        'address' => $request->ip_address, // Asignar la IP seleccionada
                     ]);
-
+    
                     return response()->json([
                         'success' => true,
                         'message' => "User {$request->username} added successfully.",
-                        'user_data' => $add_user
+                        'user_data' => $add_user,
                     ]);
                 } else {
                     return response()->json([
@@ -541,49 +514,8 @@ class RouterosController extends Controller
             ]);
         }
     }
+    
 
-    public function set_bandwidth_limit(Request $request)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'ip_address' => 'required',
-                'target' => 'required', // IP o nombre de usuario
-                'download_limit' => 'required', // En bps, como '2M' para 2 Mbps
-                'upload_limit' => 'required',   // En bps, como '1M' para 1 Mbps
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 404);
-            }
-
-            if ($this->check_routeros_connection($request->all())) {
-                if (is_object($this->API)) {
-                    // Configurar la cola simple para el usuario
-                    $set_queue = $this->API->comm('/queue/simple/add', [
-                        'name' => $request->target,
-                        'target' => $request->target,
-                        'max-limit' => "{$request->upload_limit}/{$request->download_limit}"
-                    ]);
-
-                    return response()->json([
-                        'success' => true,
-                        'message' => "Bandwidth limit set for {$request->target}.",
-                        'queue_data' => $set_queue
-                    ]);
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'API client is not initialized properly.'
-                    ]);
-                }
-            }
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error setting bandwidth limit: ' . $e->getMessage()
-            ]);
-        }
-    }
     public function create_user_group(Request $request)
     {
         try {

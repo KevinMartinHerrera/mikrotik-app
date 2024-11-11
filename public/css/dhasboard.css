@@ -1,0 +1,163 @@
+/* Gradiente de fondo en el cuerpo */
+body {
+    background: linear-gradient(135deg, #283c86, #45aaf2);
+    color: #ffffff;
+    font-family: 'Arial', sans-serif;
+}
+
+/* Contenedor principal */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Barra de navegación */
+nav {
+    background-color: #1e3a8a;
+    color: white;
+    padding: 24px 0;
+}
+
+nav .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav h1 {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+nav a {
+    background-color: #e11d48;
+    padding: 12px 24px;
+    border-radius: 9999px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(138, 110, 255, 0.5);
+}
+
+nav a:hover {
+    background-color: #be123c;
+    box-shadow: 0 6px 15px rgba(138, 110, 255, 0.7);
+}
+
+/* Títulos */
+h2, h3 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+/* Paneles de Funcionalidad */
+.bg-white {
+    background-color: white;
+}
+
+.bg-white p {
+    color: #333;
+}
+
+.bg-white:hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    transform: translateY(-5px);
+}
+
+.bg-white .rounded-xl {
+    border-radius: 12px;
+}
+
+.bg-white .shadow-xl {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.bg-white .shadow-lg {
+    box-shadow: 0 4px 10px rgba(138, 110, 255, 0.5);
+}
+
+/* Botones */
+button {
+    background: linear-gradient(135deg, #6d5ee8, #8a6eff);
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 16px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(138, 110, 255, 0.5);
+}
+
+button:hover {
+    background: linear-gradient(135deg, #8a6eff, #b29cfc);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(138, 110, 255, 0.6);
+}
+
+/* Diseño del contenedor de funcionalidad (Grid) */
+.grid {
+    display: grid;
+    gap: 2.5rem;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid md\:grid-cols-3 sm\:grid-cols-1 {
+    grid-template-columns: repeat(1, 1fr);
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+.w-full {
+    width: 100%;
+}
+
+.p-4 {
+    padding: 16px;
+}
+
+.p-6 {
+    padding: 24px;
+}
+
+/* Font Sizes */
+.text-3xl {
+    font-size: 1.875rem;
+}
+
+.text-2xl {
+    font-size: 1.5rem;
+}
+
+.text-lg {
+    font-size: 1.125rem;
+}
+
+/* Texto blanco */
+.text-white {
+    color: white;
+}
+
+.text-gray-800 {
+    color: #2d3748;
+}
+
+/* Aumento de tamaño del texto */
+.font-semibold {
+    font-weight: 600;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+/* Fondo transparente con opacidad */
+.bg-opacity-20 {
+    background-color: rgba(255, 255, 255, 0.2);
+}
