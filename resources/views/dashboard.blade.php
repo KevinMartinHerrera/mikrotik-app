@@ -117,33 +117,39 @@
                 </form>
             </div>
         </div>
-        {{-- añadir dirrceion ip  --}}
-        <div class="card" id="add-new-address">
-            <div class="card-header">Añadir Dirección IP</div>
-            <div class="card-body">
-                <form method="POST" action="{{ route('add.address') }}">
-                    @csrf
-                    <input type="hidden" class="form-control" id="ip_address" name="ip_address" value="{{ session('ip_address') }}">
-        
-                    <div class="mb-3">
-                        <label for="address" class="form-label">Dirección IP</label>
-                        <input type="text" class="form-control" id="address" name="address" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="interface" class="form-label">Interfaz</label>
-                        <select class="form-control" id="interface" name="interface" required>
-                            <option value="">Selecciona una interfaz</option>
-                            @foreach(session('interfaces', []) as $interface)
-                                <option value="{{ $interface['name'] }}">{{ $interface['name'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-        
-                    <button type="submit" class="btn btn-primary">Añadir Dirección</button>
-                </form>
-            </div>
+
+    <!-- Formulario para establecer la interfaz -->
+    <div class="card" id="set-interface">
+        <div class="card-header">Establecer Interfaz de Red</div>
+        <div class="card-body">
+            <form action="{{ route('set.interface') }}" method="POST">
+                @csrf
+                <input type="hidden" class="form-control" id="ip_address" name="ip_address" value="{{ session('ip_address') }}">
+
+                <div class="mb-3">
+                    <select class="form-control" id="id" name="id" required>
+                        @foreach(session('interfaces', []) as $interface)
+                        <option value="{{ $interface['name'] }}">{{ $interface['name'] }}</option>
+                        @endforeach   
+                        
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="interface" class="form-label">Interfaz Actual</label>
+                    <input type="text" class="form-control" id="interface" name="interface" placeholder="Nombre de la interfaz actual" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Nuevo Nombre de la Interfaz</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Nuevo nombre para la interfaz" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Actualizar Interfaz</button>
+            </form>
         </div>
+    </div>
+
 
         <!-- Formulario para añadir una ruta IP -->
         <div class="card" id="add-ip-route">
@@ -163,99 +169,159 @@
         </div>
         
 
-        <!-- Agregar Usuario -->
-        <div class="card" id="add-user">
-            <div class="card-header">Agregar Usuario</div>
-            <div class="card-body">
-                <form method="POST" action="{{ route('add.user') }}">
-                    @csrf
-                    <div class="mb-3">
-                        <label for="ip_address" class="form-label">Seleccionar IP</label>
-                        <select class="form-control" id="ip_address" name="ip_address" required>
-                            <option value="">Selecciona una IP</option>
-                            @foreach($ips as $ip)
-                                <option value="{{ $ip['address'] }}">{{ $ip['address'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Nombre de Usuario</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Contraseña</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="user_group" class="form-label">Grupo de Usuario</label>
-                        <select class="form-control" id="user_group" name="user_group" required>
-                            <option value="">Selecciona un grupo</option>
-                            @foreach($groups as $group)
-                                <option value="{{ $group['name'] }}">{{ $group['name'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Agregar Usuario</button>
-                </form>
-            </div>
-        </div>
 
-        <!-- Crear Grupo de Usuario -->
-        <div class="card">
-            <div class="card-header">Crear Grupo de Usuario</div>
-            <div class="card-body">
-                <form method="POST" action="{{ route('create.user.group') }}">
-                    @csrf
-                    <input type="hidden" class="form-control" id="ip_address" name="ip_address" value="{{ session('ip_address') }}">
-                    <div class="mb-3">
-                        <label for="group_name" class="form-label">Nombre del Grupo</label>
-                        <input type="text" class="form-control" id="group_name" name="group_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="policies" class="form-label">Políticas del Grupo</label>
-                        <input type="text" class="form-control" id="policies" name="policies" placeholder="Ejemplo: ssh,ftp,winbox,read" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Crear Grupo</button>
-                </form>
-            </div>
-        </div>
+
 
         <!-- Limitar Ancho de Banda -->
         <div class="card" id="set-bandwidth-limit">
             <div class="card-header">Establecer Límite de Ancho de Banda</div>
             <div class="card-body">
-                <form method="POST" action="{{ route('set.bandwidth') }}">
+                <form action="{{ route('set.bandwidth') }}" method="POST">
                     @csrf
+                    <input type="hidden" class="form-control" id="ip_address" name="ip_address" value="{{ session('ip_address') }}">
                     <div class="mb-3">
-                        <label for="ip_address" class="form-label">Seleccionar IP</label>
-                        <select class="form-control" id="ip_address" name="ip_address" required>
-                            <option value="">Selecciona una IP</option>
-                            @foreach($ips as $ip)
-                                <option value="{{ $ip['address'] }}">{{ $ip['address'] }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="target" class="form-label">Seleccionar Usuario</label>
+                        <label for="target" class="form-label">Selecciona el Usuario DHCP</label>
                         <select class="form-control" id="target" name="target" required>
-                            <option value="">Selecciona un usuario</option>
-                            @foreach($users as $user)
-                                <option value="{{ $user['name'] }}">{{ $user['name'] }}</option>
+                            <option value="" disabled selected>Selecciona un usuario...</option>
+                            @foreach(session('users', []) as $user)
+                                <option value="{{ $user['.id'] }}"> - {{ $user['address'] ?? 'Sin IP' }}</option>
                             @endforeach
                         </select>
                     </div>
+            
                     <div class="mb-3">
-                        <label for="download_limit" class="form-label">Límite de Descarga</label>
-                        <input type="text" class="form-control" id="download_limit" name="download_limit" placeholder="Ejemplo: 2M" required>
+                        <label for="download_limit" class="form-label">Límite de Descarga (kbps)</label>
+                        <input class="form-control" id="download_limit" name="download_limit" placeholder="3M" required>
                     </div>
+            
                     <div class="mb-3">
-                        <label for="upload_limit" class="form-label">Límite de Subida</label>
-                        <input type="text" class="form-control" id="upload_limit" name="upload_limit" placeholder="Ejemplo: 1M" required>
+                        <label for="upload_limit" class="form-label">Límite de Subida (kbps)</label>
+                        <input class="form-control" id="upload_limit" name="upload_limit" placeholder="2M" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">Establecer Límite</button>
+            
+                    <button type="submit" class="btn btn-primary">Aplicar Límite de Ancho de Banda</button>
                 </form>
             </div>
         </div>
+
+        <!-- Nat-->
+        <div class="card">
+            <div class="card-header">Configurar NAT</div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('masquerade.srcnat') }}">
+                    @csrf
+                    <input type="hidden" class="form-control" id="ip_address" name="ip_address" value="{{ session('ip_address') }}">
+        
+                    <div class="mb-3">
+                        <label for="chain" class="form-label">Chain</label>
+                        <select class="form-control" id="chain" name="chain" required>
+                            <option value="srcnat" selected>srcnat</option>
+                            <!-- Otras opciones pueden agregarse aquí -->
+                        </select>
+                    </div>
+        
+                    <div class="mb-3">
+                        <label for="protocol" class="form-label">Protocolo</label>
+                        <select class="form-control" id="protocol" name="protocol" required>
+                            <option value="tcp" selected>TCP</option>
+                            <option value="udp">UDP</option>
+                            <option value="icmp">ICMP</option>
+                            <option value="all">All</option>
+                        </select>
+                    </div>
+        
+                    <div class="mb-3">
+                        <label for="out_interface" class="form-label">Interfaz de salida</label>
+                        <select class="form-control" id="out_interface" name="out_interface" required>
+                            @foreach(session('interfaces', []) as $interface)
+                            <option value="{{ $interface['name'] }}">{{ $interface['name'] }}</option>
+                            @endforeach   
+                            
+                        </select>
+                    </div>
+        
+                    <div class="mb-3">
+                        <label for="action" class="form-label">Acción</label>
+                        <select class="form-control" id="action" name="action" required>
+                            <option value="masquerade" selected>Masquerade</option>
+                            <option value="accept">Accept</option>
+                            <option value="drop">Drop</option>
+                        </select>
+                    </div>
+        
+                    <button type="submit" class="btn btn-primary">Configurar NAT</button>
+                </form>
+            </div>
+        </div>
+        
+        {{-- dhcp --}}
+        <div class="card">
+            <div class="card-header">
+                Configurar Servidor DHCP
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('configure.dhcp.server') }}">
+                    @csrf
+                    <div class="mb-3">
+                        <input type="hidden" class="form-control" id="ip_address" name="ip_address" value="{{ session('ip_address') }}">
+                        <label for="interface" class="form-label">Interfaz</label>
+                        <select class="form-control" id="interface" name="interface" required>
+                            <option value="">Selecciona una interfaz</option>
+                            @foreach(session('interfaces', []) as $interface)
+                                <option value="{{ $interface['name'] }}">{{ $interface['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ip_range" class="form-label">Rango de IP</label>
+                        <input type="text" class="form-control" id="ip_range" name="ip_range" placeholder="Ej. 192.168.88.10-192.168.88.100" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gateway" class="form-label">Puerta de Enlace</label>
+                        <input type="text" class="form-control" id="gateway" name="gateway" placeholder="Ej. 192.168.88.1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Configurar DHCP</button>
+                </form>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Crear Usuario DHCP</h2>
+            <div class="card-body">
+                
+
+                    <!-- Mostrar mensajes de éxito o error -->
+                    @if(session('success'))
+                        <div class="alert alert-success">{{ session('success') }}</div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger">{{ session('error') }}</div>
+                    @endif
+
+                    <form action="{{ route('dhcp.create.user') }}" method="POST">
+                        @csrf
+                        <input type="hidden" class="form-control" id="ip_address" name="ip_address" value="{{ session('ip_address') }}">
+                        <div class="mb-3">
+                            <label for="ip_new" class="form-label">Dirección IP</label>
+                            <input type="text" class="form-control" id="ip_new" name="ip_new" placeholder="Ej. 192.168.1.10" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mac_address" class="form-label">Dirección MAC</label>
+                            <input type="text" class="form-control" id="mac_address" name="mac_address" placeholder="Ej. AA:BB:CC:DD:EE:FF" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="comment" class="form-label">Nombre del Host</label>
+                            <input type="text" class="form-control" id="comment" name="comment" placeholder="Nombre del dispositivo" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Crear Usuario DHCP</button>
+                    </form>
+            </div>
+        </div>
+        
+        
 
     </div>
     <script>
@@ -276,6 +342,8 @@
                 });
             @endif
         });
+
+
     </script>
     
 </body>

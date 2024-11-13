@@ -22,6 +22,11 @@ Route::prefix('v1')->group(function(){
     Route::post('/routeros-reboot', [RouterosController::class, 'routeros_reboot'])->name('routeros.reboot');
 
     Route::post('/routeros-shutdown', [RouterosController::class, 'routeros_shutdown'])->name('routeros.shutdown');
+    Route::post('/configure-dhcp-server', [RouterOSController::class, 'configureDHCPServer'])->name('configure.dhcp.server');
+    Route::post('/dhcp/create-user', [RouterOSController::class, 'createDhcpUser'])->name('dhcp.create.user');
+    Route::post('/set-interface', [RouterOSController::class, 'set_interface'])->name('set.interface');
+
+
 
 });
 

@@ -13,22 +13,6 @@ use Illuminate\Support\Facades\Hash;
 class RouterosController extends Controller
 {
     public $API=[], $routeros_data=[], $connection;
-
-    public function test_api()
-    {
-        try{
-            return response()->json([
-                'success' => true,
-                'message' => 'Welcome in Routeros API'
-            ]);
-        }catch(Exception $e){
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetch data Routeros API'
-            ]);
-        }
-    }
-
     public function store_routeros($data)
     {
         $API = new RouterosAPI;
@@ -87,7 +71,7 @@ class RouterosController extends Controller
                     $interfaces = $API->comm('/interface/print');
                     session(['interfaces' => $interfaces]);
 
-                    $users = $API->comm('/ip/hotspot/user/print');
+                    $users = $API->comm('/ip/dhcp-server/lease/print');
                     session(['users' => $users]);
     
                     // Obtener y almacenar las direcciones IP
@@ -180,42 +164,23 @@ class RouterosController extends Controller
                                 'name' => "$request->name"
                             ]);
     
-                            return response()->json([
-                                'success' => true,
-                                'message' => "Successfully set interface from: $request->interface, to: $request->name",
-                                'interface_lists' => $this->API->comm('/interface/print')
-                            ]);
+                            return redirect()->back()->with('success', "interface {$request->id} cambio correctamente a {$request->name} ");
                         else:
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Interface name: $request->name, with .id: *$request->id has already been taken from RouterOS",
-                                'interface_lists' => $this->API->comm('/interface/print')
-                            ]);
+                            return redirect()->back()->with('error', "La interfaz {$request->id} no se pudo cambiar por la api.");
                         endif;
                     } else {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Unexpected response from RouterOS API, expected an array.'
-                        ]);
+                        return redirect()->back()->with('error', "La interfaz {$request->id} no se pudo cambiar por la api.");
                     }
                 } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'RouterOS API instance is not an object.'
-                    ]);
+                    return redirect()->back()->with('error', "La interfaz {$request->id} no se pudo cambiar por la api.");
                 }
             else:
-                return response()->json([
-                    'error' => true,
-                    'message' => 'RouterOS not connected, check the login details!'
-                ]);
+                return redirect()->back()->with('error', "La interfaz {$request->id} no se pudo cambiar por la api.");
             endif;
     
         } catch(Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching data from RouterOS API: ' . $e->getMessage()
-            ]);
+            return redirect()->back()->with('error', "La interfaz {$request->id} no se pudo cambiar por la api.");
+
         }
     }
     public function add_new_address(Request $request)
@@ -252,9 +217,6 @@ class RouterosController extends Controller
             return redirect()->back()->with('error', 'Error en la conexión: ' . $e->getMessage());
         }
     }
-    
-
-
     public function add_ip_route(Request $request)
     {
         try {
@@ -301,9 +263,6 @@ class RouterosController extends Controller
             return redirect()->back()->with('error', 'Error al obtener datos de la API de RouterOS: ' . $e->getMessage());
         }
     }
-    
-    
-
     public function add_dns_servers(Request $request)
     {
         try{
@@ -349,10 +308,9 @@ class RouterosController extends Controller
             ]);
         }
     }
-
     public function masquerade_srcnat(Request $request)
     {
-        try{
+        try {
             $schema = [
                 'ip_address' => 'required',
                 'chain' => 'required',
@@ -361,41 +319,38 @@ class RouterosController extends Controller
                 'action' => 'required'
             ];
             $validator = Validator::make($request->all(), $schema);
-            if($validator->fails()) return response()->json($validator->errors(), 404);
-
-            if($this->check_routeros_connection($request->all())):
+    
+            if ($validator->fails()) {
+                return redirect()->back()->with('error', 'Validation failed. Please check the inputs.');
+            }
+    
+            if ($this->check_routeros_connection($request->all())) {
                 if (is_object($this->API)) {
                     $check_src_nat = $this->API->comm('/ip/firewall/nat/print');
-
-                    if(count($check_src_nat) == 0):
+    
+                    if (count($check_src_nat) == 0) {
                         $add_firewall_nat = $this->API->comm('/ip/firewall/nat/add', [
                             'chain' => $request->chain,
                             'action' => $request->action,
                             'protocol' => $request->protocol,
                             'out-interface' => $request->out_interface
                         ]);
-
+    
                         $firewall_nat_lists = $this->API->comm('/ip/firewall/nat/print');
-
-                        return response()->json([
-                            'success' => true,
-                            'message' => "Successfully added firewall NAT for $request->chain",
-                            'nat_lists' => $firewall_nat_lists
-                        ]);
-                    else:
-                        return response()->json([
-                            'error' => true,
-                            'message' => "srcnat for out-interface $request->out_interface already exists",
-                            'srcnat_lists' => $check_src_nat
-                        ]);
-                    endif;
+    
+                        return redirect()->back()->with('success', "Successfully added firewall NAT for {$request->chain}.")
+                            ->with('nat_lists', $firewall_nat_lists);
+                    } else {
+                        return redirect()->back()->with('error', "srcnat for out-interface {$request->out_interface} already exists.")
+                            ->with('srcnat_lists', $check_src_nat);
+                    }
                 }
-            endif;
-        }catch(Exception $e){
-            return response()->json(['error' => true, 'message' => 'Error fetching RouterOS API '.$e->getMessage()]);
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error fetching RouterOS API: ' . $e->getMessage());
         }
     }
-
+    
     public function routeros_reboot(Request $request)
     {
         try {
@@ -420,7 +375,6 @@ class RouterosController extends Controller
             return redirect()->back()->with('error', 'Error al intentar reiniciar RouterOS: ' . $e->getMessage());
         }
     }
-    
     public function routeros_shutdown(Request $request)
     {
         try {
@@ -455,22 +409,6 @@ class RouterosController extends Controller
                 'message' => 'Error al intentar apagar RouterOS: ' . $e->getMessage()
             ]);
         }
-    }
-    
-
-
-
-    
-    
-    public function showDashboard()
-    {
-        $routeros_data = session('routeros_data'); // Recuperar datos de sesión
-
-        if (!$routeros_data) {
-            return redirect()->route('login')->withErrors(['No hay conexión activa con RouterOS.']);
-        }
-
-        return view('dashboard', compact('routeros_data'));
     }
     public function add_user(Request $request)
     {
@@ -514,8 +452,6 @@ class RouterosController extends Controller
             ]);
         }
     }
-    
-
     public function create_user_group(Request $request)
     {
         try {
@@ -564,11 +500,139 @@ class RouterosController extends Controller
             ]);
         }
     }
-
-
-
+    public function setBandwidth(Request $request)
+    {
+        try {
+            // Validación
+            $validator = Validator::make($request->all(), [
+                'ip_address' => 'required',
+                'target' => 'required', // IP seleccionada
+                'download_limit' => 'required',
+                'upload_limit' => 'required',
+            ]);
+    
+            if ($validator->fails()) {
+                return redirect()->back()->with('error', 'Validation failed. Please check the inputs.');
+            }
+    
+            // Configurar límite de ancho de banda
+            if ($this->check_routeros_connection($request->all())) {
+                if (is_object($this->API)) {
+                    $set_queue = $this->API->comm('/queue/simple/add', [
+                        'name' => $request->target,  // Nombre opcional para la cola
+                        'target' => $request->target, // Usando IP seleccionada
+                        'max-limit' => "{$request->upload_limit}/{$request->download_limit}",
+                    ]);
+    
+                    return redirect()->back()->with('success', "Límite de ancho de banda establecido para {$request->target}.");
+                } else {
+                    return redirect()->back()->with('error', 'API client is not initialized properly.');
+                }
+            } else {
+                return redirect()->back()->with('error', 'No se pudo conectar al RouterOS. Verifique los detalles de inicio de sesión.');
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error setting bandwidth limit: ' . $e->getMessage());
+        }
+    }
     
     
+    
+    public function configureDHCPServer(Request $request)
+    {
+        try {
+            // Validación de los datos de entrada
+            $validator = Validator::make($request->all(), [
+                'interface' => 'required',   // Interfaz a usar
+                'ip_range' => 'required',    // Rango de IPs para DHCP
+                'gateway' => 'required',     // Puerta de enlace
+            ]);
+    
+            if ($validator->fails()) {
+                return redirect()->back()->with('error', 'Validation failed. Please check the inputs.');
+            }
+    
+            // Verificar la conexión a RouterOS
+            if ($this->check_routeros_connection($request->all())) {
+                if (is_object($this->API)) {
+                    // Crear el pool de IPs
+                    $this->API->comm('/ip/pool/add', [
+                        'name' => 'dhcp_pool',  // Nombre del pool
+                        'ranges' => $request->ip_range,  // Rango de IPs
+                    ]);
+    
+                    // Crear el servidor DHCP
+                    $this->API->comm('/ip/dhcp-server/add', [
+                        'name' => 'dhcp1',
+                        'interface' => $request->interface,  // Interfaz
+                        'address-pool' => 'dhcp_pool',
+                        'lease-time' => '1h'  // Tiempo de arrendamiento
+                    ]);
+    
+                    // Crear la red DHCP
+                    $this->API->comm('/ip/dhcp-server/network/add', [
+                        'address' => $request->ip_range,  // Dirección de la red
+                        'gateway' => $request->gateway,   // Puerta de enlace
+                        'dns-server' => '8.8.8.8,8.8.4.4' // Servidores DNS
+                    ]);
+    
+                    // Obtener la lista de servidores DHCP configurados
+                    $dhcp_server_list = $this->API->comm('/ip/dhcp-server/print');
+    
+                    // Redirigir con mensaje de éxito
+                    return redirect()->back()->with('success', 'Servidor DHCP configurado con éxito.');
+                } else {
+                    return redirect()->back()->with('error', 'API no inicializada correctamente.');
+                }
+            } else {
+                return redirect()->back()->with('error', 'No se pudo conectar a RouterOS. Verifica los datos de conexión.');
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error al configurar el servidor DHCP: ' . $e->getMessage());
+        }
+    }
+    
+
+
+    public function createDhcpUser(Request $request)
+    {
+        try {
+            // Validación de los datos del formulario
+            $validator = Validator::make($request->all(), [
+                'ip_address' => 'required|ip',
+                'ip_new' => 'required|ip',
+                'mac_address' => 'required',
+                'comment' => 'nullable|string|max:255',
+            ]);
+    
+            if ($validator->fails()) {
+                return redirect()->back()->with('error', 'Validation failed. Please check the inputs.');
+            }
+    
+            // Verificar la conexión con RouterOS
+            if ($this->check_routeros_connection($request->all())) {
+                if (is_object($this->API)) {
+                    // Crear el usuario DHCP en RouterOS
+                    $add_dhcp_user = $this->API->comm('/ip/dhcp-server/lease/add', [
+                        'address' => $request->ip_new,
+                        'mac-address' => $request->mac_address,
+                        'comment' => $request->comment, // Comentario opcional
+                    ]);
+    
+                    // Redirigir con mensaje de éxito
+                    return redirect()->back()->with('success', "DHCP user with IP {$request->ip_address} created successfully.");
+                } else {
+                    return redirect()->back()->with('error', 'API client is not initialized properly.');
+                }
+            } else {
+                return redirect()->back()->with('error', 'Failed to connect to RouterOS.');
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error creating DHCP user: ' . $e->getMessage());
+        }
+    }
+    
+
 
     
 
